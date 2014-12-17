@@ -1,4 +1,4 @@
-AC_INIT([MVTools], [1], [https://github.com/dubhater/vapoursynth-mvtools/issues], [MVTools], [https://github.com/dubhater/vapoursynth-mvtools/])
+AC_INIT([Damb], [1], [https://github.com/dubhater/vapoursynth-damb/issues], [Damb], [https://github.com/dubhater/vapoursynth-damb/])
 
 : ${CXXFLAGS=""}
 
