@@ -236,11 +236,13 @@ static const VSFrameRef *VS_CC dambWriteGetFrame(int n, int activationReason, vo
     if (activationReason == arInitial) {
         // Do it like this because the frame requests sometimes arrive out of
         // order and the audio samples get written in the wrong order.
-        for (int frame = d->last_frame + 1; frame <= n && n - d->last_frame < 50; frame++)
+        int distance = n - d->last_frame;
+        for (int frame = d->last_frame + 1; frame <= n && distance < 50; frame++)
             vsapi->requestFrameFilter(frame, d->node, frameCtx);
         vsapi->requestFrameFilter(n, d->node, frameCtx);
     } else if (activationReason == arAllFramesReady) {
-        for (int frame = d->last_frame + 1; frame <= n && n - d->last_frame < 50; frame++) {
+        int distance = n - d->last_frame;
+        for (int frame = d->last_frame + 1; frame <= n && distance < 50; frame++) {
             const VSFrameRef *src = vsapi->getFrameFilter(frame, d->node, frameCtx);
             const VSMap *props = vsapi->getFramePropsRO(src);
             int err;
