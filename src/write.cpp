@@ -31,7 +31,6 @@ typedef struct {
 
     int original_channels;
     int original_samplerate;
-    int original_format;
 } DambWriteData;
 
 
@@ -73,7 +72,6 @@ static const VSFrameRef *VS_CC dambWriteGetFrame(int n, int activationReason, vo
 
                 d->original_channels = input_channels;
                 d->original_samplerate = input_samplerate;
-                d->original_format = input_format;
 
                 int new_format = 0;
                 new_format |= d->format ? d->format : (input_format & SF_FORMAT_TYPEMASK);
@@ -115,7 +113,7 @@ static const VSFrameRef *VS_CC dambWriteGetFrame(int n, int activationReason, vo
 
             if (d->original_channels != input_channels ||
                 d->original_samplerate != input_samplerate ||
-                d->original_format != input_format) {
+                d->sample_type != getSampleType(input_format)) {
                 vsapi->setFilterError(std::string("Write: Clip contains more than one type of audio data. Mismatch found at frame ").append(std::to_string(frame)).append(".").c_str(), frameCtx);
                 vsapi->freeFrame(src);
                 return NULL;
