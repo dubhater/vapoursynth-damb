@@ -41,6 +41,10 @@ typedef struct {
     double quality;
     int last_frame;
     int initialised;
+
+    int original_channels;
+    int original_samplerate;
+    int original_format;
 } DambWriteData;
 
 
@@ -271,18 +275,22 @@ static const VSFrameRef *VS_CC dambWriteGetFrame(int n, int activationReason, vo
             const VSMap *props = vsapi->getFramePropsRO(src);
             int err;
 
+            int input_channels = vsapi->propGetInt(props, damb_channels, 0, &err);
+            int input_samplerate = vsapi->propGetInt(props, damb_samplerate, 0, &err);
+            int input_format = vsapi->propGetInt(props, damb_format, 0, &err);
+            // Either they are all there, or they are all missing. Probably.
+            if (err) {
+                vsapi->setFilterError(std::string("Write: Audio data not found in frame ").append(std::to_string(frame)).append(".").c_str(), frameCtx);
+                vsapi->freeFrame(src);
+                return NULL;
+            }
+
             if (!d->initialised) {
                 d->initialised = 1;
 
-                int input_channels = vsapi->propGetInt(props, damb_channels, 0, &err);
-                int input_samplerate = vsapi->propGetInt(props, damb_samplerate, 0, &err);
-                int input_format = vsapi->propGetInt(props, damb_format, 0, &err);
-                // Either they are all there, or they are all missing. Probably.
-                if (err) {
-                    vsapi->setFilterError(std::string("Write: Audio data not found in frame ").append(std::to_string(frame)).append(".").c_str(), frameCtx);
-                    vsapi->freeFrame(src);
-                    return NULL;
-                }
+                d->original_channels = input_channels;
+                d->original_samplerate = input_samplerate;
+                d->original_format = input_format;
 
                 int new_format = 0;
                 new_format |= d->format ? d->format : (input_format & SF_FORMAT_TYPEMASK);
@@ -320,6 +328,14 @@ static const VSFrameRef *VS_CC dambWriteGetFrame(int n, int activationReason, vo
                 // so they need to be based on the input format.
                 d->sample_type = getSampleType(input_format);
                 d->sample_size = getSampleSize(d->sample_type);
+            }
+
+            if (d->original_channels != input_channels ||
+                d->original_samplerate != input_samplerate ||
+                d->original_format != input_format) {
+                vsapi->setFilterError(std::string("Write: Clip contains more than one type of audio data. Mismatch found at frame ").append(std::to_string(frame)).append(".").c_str(), frameCtx);
+                vsapi->freeFrame(src);
+                return NULL;
             }
 
             const char *buffer = vsapi->propGetData(props, damb_samples, 0, &err);
