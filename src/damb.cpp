@@ -22,7 +22,7 @@ typedef struct {
     void *buffer;
     int sample_size;
     int sample_type;
-    sf_count_t samples_per_frame;
+    double samples_per_frame;
     int format;
     int subtype;
     double quality;
@@ -53,7 +53,9 @@ static const VSFrameRef *VS_CC dambReadGetFrame(int n, int activationReason, voi
         vsapi->freeFrame(src);
 
         // sf_count_t is int64_t
-        sf_count_t sample_start = d->samples_per_frame * n;
+        sf_count_t sample_start = (sf_count_t)(d->samples_per_frame * n + 0.5);
+        sf_count_t sample_end = (sf_count_t)(d->samples_per_frame * (n + 1) + 0.5);
+        sf_count_t sample_count = sample_end - sample_start;
 
         sf_count_t seek_ret = sf_seek(d->sndfile, sample_start, SEEK_SET);
         if (seek_ret != sample_start) {
@@ -64,13 +66,13 @@ static const VSFrameRef *VS_CC dambReadGetFrame(int n, int activationReason, voi
 
         sf_count_t readf_ret;
         if (d->sample_type == SF_FORMAT_PCM_16)
-            readf_ret = sf_readf_short(d->sndfile, (short *)d->buffer, d->samples_per_frame);
+            readf_ret = sf_readf_short(d->sndfile, (short *)d->buffer, sample_count);
         else if (d->sample_type == SF_FORMAT_PCM_32)
-            readf_ret = sf_readf_int(d->sndfile, (int *)d->buffer, d->samples_per_frame);
+            readf_ret = sf_readf_int(d->sndfile, (int *)d->buffer, sample_count);
         else if (d->sample_type == SF_FORMAT_FLOAT)
-            readf_ret = sf_readf_float(d->sndfile, (float *)d->buffer, d->samples_per_frame);
+            readf_ret = sf_readf_float(d->sndfile, (float *)d->buffer, sample_count);
         else
-            readf_ret = sf_readf_double(d->sndfile, (double *)d->buffer, d->samples_per_frame);
+            readf_ret = sf_readf_double(d->sndfile, (double *)d->buffer, sample_count);
 
         if (readf_ret == 0) {
             vsapi->setFilterError(std::string("Read: sf_readf_blah returned 0 at frame ").append(std::to_string(n)).append(".").c_str(), frameCtx);
@@ -215,12 +217,14 @@ static void VS_CC dambReadCreate(const VSMap *in, VSMap *out, void *userData, VS
         return;
     }
 
-    d.samples_per_frame = (sf_count_t)((d.sfinfo.samplerate * d.vi->fpsDen) / (double)d.vi->fpsNum + 0.5);
+    d.samples_per_frame = (d.sfinfo.samplerate * d.vi->fpsDen) / (double)d.vi->fpsNum;
 
     d.sample_type = getSampleType(d.sfinfo.format);
     d.sample_size = getSampleSize(d.sample_type);
 
-    d.buffer = malloc(d.samples_per_frame * d.sfinfo.channels * d.sample_size);
+    // sample_count will be sometimes (int)samples_per_frame,
+    // sometimes (int)(samples_per_frame + 1), depending on the frame number
+    d.buffer = malloc((int)(d.samples_per_frame + 1) * d.sfinfo.channels * d.sample_size);
 
 
     data = new DambData();
