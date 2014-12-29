@@ -23,15 +23,29 @@ typedef struct {
     int sample_size;
     int sample_type;
     double samples_per_frame;
+} DambReadData;
+
+
+typedef struct {
+    VSNodeRef *node;
+    const VSVideoInfo *vi;
+
+    std::string filename;
+
+    SNDFILE *sndfile;
+    SF_INFO sfinfo;
+    int sample_size;
+    int sample_type;
     int format;
     int subtype;
     double quality;
     int last_frame;
-} DambData;
+    int initialised;
+} DambWriteData;
 
 
-static void VS_CC dambInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
-    DambData *d = (DambData *) * instanceData;
+static void VS_CC dambReadInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
+    DambReadData *d = (DambReadData *) * instanceData;
     vsapi->setVideoInfo(d->vi, 1, node);
 }
 
@@ -43,7 +57,7 @@ const char *damb_format = "Damb format";
 
 
 static const VSFrameRef *VS_CC dambReadGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    DambData *d = (DambData *) * instanceData;
+    DambReadData *d = (DambReadData *) * instanceData;
 
     if (activationReason == arInitial) {
         vsapi->requestFrameFilter(n, d->node, frameCtx);
@@ -97,7 +111,7 @@ static const VSFrameRef *VS_CC dambReadGetFrame(int n, int activationReason, voi
 
 
 static void VS_CC dambReadFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
-    DambData *d = (DambData *)instanceData;
+    DambReadData *d = (DambReadData *)instanceData;
 
     sf_close(d->sndfile);
     free(d->buffer);
@@ -173,8 +187,8 @@ static inline int getSampleSize(int sample_type) {
 
 
 static void VS_CC dambReadCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
-    DambData d;
-    DambData *data;
+    DambReadData d;
+    DambReadData *data;
 
     d.node = vsapi->propGetNode(in, "clip", 0, NULL);
     d.vi = vsapi->getVideoInfo(d.node);
@@ -227,15 +241,21 @@ static void VS_CC dambReadCreate(const VSMap *in, VSMap *out, void *userData, VS
     d.buffer = malloc((int)(d.samples_per_frame + 1) * d.sfinfo.channels * d.sample_size);
 
 
-    data = new DambData();
+    data = new DambReadData();
     *data = d;
 
-    vsapi->createFilter(in, out, "Read", dambInit, dambReadGetFrame, dambReadFree, fmSerial, 0, data, core);
+    vsapi->createFilter(in, out, "Read", dambReadInit, dambReadGetFrame, dambReadFree, fmSerial, 0, data, core);
+}
+
+
+static void VS_CC dambWriteInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
+    DambWriteData *d = (DambWriteData *) * instanceData;
+    vsapi->setVideoInfo(d->vi, 1, node);
 }
 
 
 static const VSFrameRef *VS_CC dambWriteGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
-    DambData *d = (DambData *) * instanceData;
+    DambWriteData *d = (DambWriteData *) * instanceData;
 
     if (activationReason == arInitial) {
         // Do it like this because the frame requests sometimes arrive out of
@@ -251,8 +271,8 @@ static const VSFrameRef *VS_CC dambWriteGetFrame(int n, int activationReason, vo
             const VSMap *props = vsapi->getFramePropsRO(src);
             int err;
 
-            if (d->samples_per_frame == -1) { // Not initialised yet.
-                d->samples_per_frame = 0;
+            if (!d->initialised) {
+                d->initialised = 1;
 
                 int input_channels = vsapi->propGetInt(props, damb_channels, 0, &err);
                 int input_samplerate = vsapi->propGetInt(props, damb_samplerate, 0, &err);
@@ -340,7 +360,7 @@ static const VSFrameRef *VS_CC dambWriteGetFrame(int n, int activationReason, vo
 
 
 static void VS_CC dambWriteFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
-    DambData *d = (DambData *)instanceData;
+    DambWriteData *d = (DambWriteData *)instanceData;
 
     if (d->sndfile)
         sf_close(d->sndfile);
@@ -392,8 +412,8 @@ static inline int getSubtypeFromString(const char *subtype) {
 
 
 static void VS_CC dambWriteCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
-    DambData d;
-    DambData *data;
+    DambWriteData d;
+    DambWriteData *data;
     int err;
 
     d.node = vsapi->propGetNode(in, "clip", 0, NULL);
@@ -416,7 +436,7 @@ static void VS_CC dambWriteCreate(const VSMap *in, VSMap *out, void *userData, V
         d.quality = 0.7;
 
 
-    d.samples_per_frame = -1; // Use it as a flag.
+    d.initialised = 0;
     d.sndfile = NULL;
 
     // The rest of the initialisation happens the first time a frame
@@ -425,10 +445,10 @@ static void VS_CC dambWriteCreate(const VSMap *in, VSMap *out, void *userData, V
     d.last_frame = -1;
 
 
-    data = new DambData();
+    data = new DambWriteData();
     *data = d;
 
-    vsapi->createFilter(in, out, "Write", dambInit, dambWriteGetFrame, dambWriteFree, fmSerial, 0, data, core);
+    vsapi->createFilter(in, out, "Write", dambWriteInit, dambWriteGetFrame, dambWriteFree, fmSerial, 0, data, core);
 }
 
 
