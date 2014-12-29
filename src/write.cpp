@@ -216,16 +216,24 @@ static void VS_CC dambWriteCreate(const VSMap *in, VSMap *out, void *userData, V
     d.node = vsapi->propGetNode(in, "clip", 0, NULL);
     d.vi = vsapi->getVideoInfo(d.node);
 
+    d.format = 0;
+    d.subtype = 0;
+
     d.filename = vsapi->propGetData(in, "file", 0, NULL);
+    size_t last_dot = d.filename.find_last_of('.');
+    if (last_dot != std::string::npos)
+        d.format = getMajorFormatFromString(d.filename.substr(last_dot + 1).c_str());
 
     const char *format = vsapi->propGetData(in, "format", 0, &err);
-    d.format = getMajorFormatFromString(format);
+    if (!err)
+        d.format = getMajorFormatFromString(format);
 
     if (d.format == SF_FORMAT_OGG)
         d.subtype = SF_FORMAT_VORBIS;
     else {
         const char *subtype = vsapi->propGetData(in, "sample_type", 0, &err);
-        d.subtype = getSubtypeFromString(subtype);
+        if (!err)
+            d.subtype = getSubtypeFromString(subtype);
     }
 
     d.quality = vsapi->propGetFloat(in, "quality", 0, &err);
