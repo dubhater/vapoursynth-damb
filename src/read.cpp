@@ -50,32 +50,29 @@ static const VSFrameRef *VS_CC dambReadGetFrame(int n, int activationReason, voi
         sf_count_t sample_count = sample_end - sample_start;
 
         sf_count_t seek_ret = sf_seek(d->sndfile, sample_start, SEEK_SET);
-        if (seek_ret != sample_start) {
-            vsapi->setFilterError(std::string("Read: sf_seek failed at frame ").append(std::to_string(n)).append(".").c_str(), frameCtx);
-            vsapi->freeFrame(dst);
-            return NULL;
+
+        sf_count_t readf_ret = 0;
+        if (seek_ret == sample_start) {
+            if (d->sample_type == SF_FORMAT_PCM_16)
+                readf_ret = sf_readf_short(d->sndfile, (short *)d->buffer, sample_count);
+            else if (d->sample_type == SF_FORMAT_PCM_32)
+                readf_ret = sf_readf_int(d->sndfile, (int *)d->buffer, sample_count);
+            else if (d->sample_type == SF_FORMAT_FLOAT)
+                readf_ret = sf_readf_float(d->sndfile, (float *)d->buffer, sample_count);
+            else
+                readf_ret = sf_readf_double(d->sndfile, (double *)d->buffer, sample_count);
         }
 
-        sf_count_t readf_ret;
-        if (d->sample_type == SF_FORMAT_PCM_16)
-            readf_ret = sf_readf_short(d->sndfile, (short *)d->buffer, sample_count);
-        else if (d->sample_type == SF_FORMAT_PCM_32)
-            readf_ret = sf_readf_int(d->sndfile, (int *)d->buffer, sample_count);
-        else if (d->sample_type == SF_FORMAT_FLOAT)
-            readf_ret = sf_readf_float(d->sndfile, (float *)d->buffer, sample_count);
-        else
-            readf_ret = sf_readf_double(d->sndfile, (double *)d->buffer, sample_count);
-
-        if (readf_ret == 0) {
-            vsapi->setFilterError(std::string("Read: sf_readf_blah returned 0 at frame ").append(std::to_string(n)).append(".").c_str(), frameCtx);
-            vsapi->freeFrame(dst);
-            return NULL;
+        if (readf_ret < sample_count) {
+            int64_t silence_start_bytes = readf_ret * d->sfinfo.channels * d->sample_size;
+            int64_t silence_count_bytes = (sample_count - readf_ret) * d->sfinfo.channels * d->sample_size;
+            memset((char *)d->buffer + silence_start_bytes, 0, silence_count_bytes);
         }
 
-        int64_t readf_ret_bytes = readf_ret * d->sfinfo.channels * d->sample_size;
+        int64_t sample_count_bytes = sample_count * d->sfinfo.channels * d->sample_size;
 
         VSMap *props = vsapi->getFramePropsRW(dst);
-        vsapi->propSetData(props, damb_samples, (char *)d->buffer, readf_ret_bytes, paReplace);
+        vsapi->propSetData(props, damb_samples, (char *)d->buffer, sample_count_bytes, paReplace);
         vsapi->propSetInt(props, damb_channels, d->sfinfo.channels, paReplace);
         vsapi->propSetInt(props, damb_samplerate, d->sfinfo.samplerate, paReplace);
         vsapi->propSetInt(props, damb_format, d->sfinfo.format, paReplace);
