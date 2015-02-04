@@ -24,7 +24,7 @@ Parameters:
         rate must be known.
 
     file
-        Name of the audio file. WAV, W64, FLAC, and OGG are supported.
+        Name of the audio file. WAV, W64, WAV with WAVEFORMATEX, FLAC, and OGG are supported.
 
 ::
 
@@ -47,7 +47,10 @@ Parameters:
         Name of the output audio file. If the extension is recognised, it sets
         the output format.
 
-        Recognised extensions: "wav", "w64", "flac", "ogg".
+        Since both WAV and WAVEX formats can have the extension "wav", Write
+        will output WAVEX if the input was WAVEX, otherwise WAV.
+
+        Recognised extensions: "wav", "w64", "wavex", "flac", "ogg".
 
     format
         Sets the output audio format. If not specified, the output format is

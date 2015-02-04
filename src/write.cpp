@@ -73,6 +73,11 @@ static const VSFrameRef *VS_CC dambWriteGetFrame(int n, int activationReason, vo
                 d->original_channels = input_channels;
                 d->original_samplerate = input_samplerate;
 
+                // If the input was WAVEX, make the output WAVEX too.
+                if ((input_format & SF_FORMAT_TYPEMASK) == SF_FORMAT_WAVEX &&
+                    d->format == SF_FORMAT_WAV)
+                    d->format = SF_FORMAT_WAVEX;
+
                 int new_format = 0;
                 new_format |= d->format ? d->format : (input_format & SF_FORMAT_TYPEMASK);
                 new_format |= d->subtype ? d->subtype : (input_format & SF_FORMAT_SUBMASK);
@@ -176,6 +181,8 @@ static inline int getMajorFormatFromString(const char *format) {
         return SF_FORMAT_WAV;
     if (f == "w64")
         return SF_FORMAT_W64;
+    if (f == "wavex")
+        return SF_FORMAT_WAVEX;
     if (f == "flac")
         return SF_FORMAT_FLAC;
     if (f == "ogg")

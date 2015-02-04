@@ -101,6 +101,7 @@ static inline int isAcceptableFormatType(int format) {
     int formats[] = {
         SF_FORMAT_WAV,
         SF_FORMAT_W64,
+        SF_FORMAT_WAVEX,
         SF_FORMAT_FLAC,
         SF_FORMAT_OGG,
         0
