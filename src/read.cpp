@@ -102,10 +102,11 @@ static inline int isAcceptableFormatType(int format) {
         SF_FORMAT_WAV,
         SF_FORMAT_W64,
         SF_FORMAT_FLAC,
-        SF_FORMAT_OGG
+        SF_FORMAT_OGG,
+        0
     };
 
-    for (size_t i = 0; i < sizeof(formats); i++)
+    for (int i = 0; formats[i]; i++)
         if (type == formats[i])
             return 1;
 
@@ -124,10 +125,11 @@ static inline int isAcceptableFormatSubtype(int format) {
         SF_FORMAT_PCM_U8,
         SF_FORMAT_FLOAT,
         SF_FORMAT_DOUBLE,
-        SF_FORMAT_VORBIS
+        SF_FORMAT_VORBIS,
+        0
     };
 
-    for (size_t i = 0; i < sizeof(formats); i++)
+    for (int i = 0; formats[i]; i++)
         if (subtype == formats[i])
             return 1;
 

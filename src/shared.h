@@ -5,14 +5,21 @@ static const char *damb_samplerate = "Damb sample rate";
 static const char *damb_format = "Damb format";
 
 
+
 static inline int getSampleType(int format) {
-    if (format & SF_FORMAT_PCM_S8 || format & SF_FORMAT_PCM_U8 || format & SF_FORMAT_PCM_16)
+    int subtype = format & SF_FORMAT_SUBMASK;
+
+    if (subtype == SF_FORMAT_PCM_S8 ||
+        subtype == SF_FORMAT_PCM_U8 ||
+        subtype == SF_FORMAT_PCM_16)
         return SF_FORMAT_PCM_16;
 
-    if (format & SF_FORMAT_PCM_24 || format & SF_FORMAT_PCM_32)
+    if (subtype == SF_FORMAT_PCM_24 ||
+        subtype == SF_FORMAT_PCM_32)
         return SF_FORMAT_PCM_32;
 
-    if (format & SF_FORMAT_FLOAT || format & SF_FORMAT_VORBIS)
+    if (subtype == SF_FORMAT_FLOAT ||
+        subtype == SF_FORMAT_VORBIS)
         return SF_FORMAT_FLOAT;
 
     return SF_FORMAT_DOUBLE;
