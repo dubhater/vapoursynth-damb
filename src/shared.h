@@ -1,8 +1,8 @@
 
-static const char *damb_samples = "Damb samples";
-static const char *damb_channels = "Damb channels";
-static const char *damb_samplerate = "Damb sample rate";
-static const char *damb_format = "Damb format";
+static const char *damb_samples = "DambSamples";
+static const char *damb_channels = "DambChannels";
+static const char *damb_samplerate = "DambSampleRate";
+static const char *damb_format = "DambFormat";
 
 
 
