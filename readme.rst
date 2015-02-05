@@ -13,7 +13,7 @@ Usage
 =====
 ::
 
-    damb.Read(clip clip, string file)
+    damb.Read(clip clip, string file[, float delay=0.0])
 
 **Read** will attach to each frame from *clip* the corresponding audio samples
 from *file*.
@@ -24,7 +24,15 @@ Parameters:
         rate must be known.
 
     file
-        Name of the audio file. WAV, W64, WAV with WAVEFORMATEX, FLAC, and OGG are supported.
+        Name of the audio file. WAV, W64, WAV with WAVEFORMATEX, FLAC, and OGG
+        are supported.
+
+    delay
+        Delay applied to the audio, in seconds. If negative, the audio starts
+        earlier, samples are discarded from the beginning, and silence is
+        added at the end, if necessary. If positive, the audio starts later,
+        silence is inserted at the beginning, and excess samples are discarded
+        at the end. The duration of the clip is not changed.
 
 ::
 
